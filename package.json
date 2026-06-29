@@ -1,0 +1,24 @@
+{
+  "name": "phone-mouse",
+  "version": "1.0.0",
+  "description": "Use your phone as a wireless mouse and keyboard for your laptop",
+  "main": "server.js",
+  "bin": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "build:win": "pkg . --targets node18-win-x64 --output dist/PhoneMouse.exe"
+  },
+  "pkg": {
+    "assets": [
+      "public/**/*",
+      "node_modules/@nut-tree-fork/**/*"
+    ],
+    "scripts": []
+  },
+  "dependencies": {
+    "@nut-tree-fork/nut-js": "^4.2.0",
+    "express": "^4.22.2",
+    "qrcode-terminal": "^0.12.0",
+    "socket.io": "^4.8.3"
+  }
+}

@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="gu">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#0f172a" />
+<title>Phone Mouse</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-user-select: none; user-select: none; touch-action: none; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 16px; flex-shrink: 0;
+  }
+  header .title { font-size: 16px; font-weight: 600; letter-spacing: .3px; }
+  header .title span { color: #38bdf8; }
+  .status { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #94a3b8; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: #ef4444; transition: background .3s; }
+  .dot.on { background: #22c55e; box-shadow: 0 0 8px #22c55e; }
+
+  /* ટચપેડ વિસ્તાર */
+  .pad {
+    flex: 1;
+    margin: 6px 12px;
+    border-radius: 18px;
+    background: linear-gradient(160deg, #1e293b, #172033);
+    border: 1px solid #29384f;
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  .pad .hint {
+    text-align: center; color: #475569; font-size: 14px; line-height: 1.7; pointer-events: none;
+    padding: 20px;
+  }
+  .ripple {
+    position: absolute; width: 60px; height: 60px; border-radius: 50%;
+    background: rgba(56,189,248,.35); transform: translate(-50%,-50%) scale(0);
+    pointer-events: none; animation: rip .4s ease-out forwards;
+  }
+  @keyframes rip { to { transform: translate(-50%,-50%) scale(1.6); opacity: 0; } }
+
+  /* ક્લિક બટન રો */
+  .clicks { display: flex; gap: 10px; padding: 0 12px 6px; flex-shrink: 0; }
+  .clicks button {
+    flex: 1; padding: 16px 0; font-size: 15px; font-weight: 600;
+    background: #1e293b; color: #cbd5e1; border: 1px solid #334155;
+    border-radius: 14px; transition: background .12s, transform .08s;
+  }
+  .clicks button.mid { flex: 0 0 70px; }
+  .clicks button:active { background: #334155; transform: scale(.96); }
+  .clicks button:active.left, .clicks button:active.right { background: #0ea5e9; color: #fff; }
+
+  /* ટૂલબાર */
+  .toolbar { display: flex; gap: 10px; padding: 0 12px 10px; flex-shrink: 0; }
+  .toolbar button {
+    flex: 1; padding: 13px 0; font-size: 13px; font-weight: 600;
+    background: transparent; color: #94a3b8; border: 1px solid #334155;
+    border-radius: 12px; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  }
+  .toolbar button.active { background: #0ea5e9; color: #fff; border-color: #0ea5e9; }
+  .toolbar button:active { transform: scale(.96); }
+  .toolbar .ic { font-size: 18px; }
+
+  /* કીબોર્ડ પેનલ */
+  .kb {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    background: #0b1220; border-top: 1px solid #29384f;
+    padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
+    transform: translateY(110%); transition: transform .28s ease;
+    z-index: 50;
+  }
+  .kb.open { transform: translateY(0); }
+  .kb .row1 { display: flex; gap: 8px; margin-bottom: 8px; }
+  .kb input {
+    flex: 1; padding: 14px; font-size: 16px; border-radius: 12px;
+    border: 1px solid #334155; background: #1e293b; color: #e2e8f0; outline: none;
+  }
+  .kb input:focus { border-color: #38bdf8; }
+  .kb .keys { display: flex; gap: 8px; flex-wrap: wrap; }
+  .kb .keys button {
+    flex: 1; min-width: 60px; padding: 11px 0; font-size: 13px;
+    background: #1e293b; color: #cbd5e1; border: 1px solid #334155; border-radius: 10px;
+  }
+  .kb .keys button:active { background: #0ea5e9; color: #fff; }
+  .kb .close { color: #f87171; }
+
+  .sens { display: flex; align-items: center; gap: 10px; padding: 0 14px 12px; font-size: 12px; color: #94a3b8; flex-shrink: 0; }
+  .sens input { flex: 1; }
+</style>
+</head>
+<body>
+  <!-- PIN લોગિન ઓવરલે -->
+  <div id="lock" style="position:fixed;inset:0;z-index:200;background:#0f172a;display:none;flex-direction:column;align-items:center;justify-content:center;padding:24px;">
+    <div style="font-size:40px;margin-bottom:8px;">🔒</div>
+    <div style="font-size:18px;font-weight:600;margin-bottom:4px;">Phone Mouse</div>
+    <div id="lockMsg" style="font-size:13px;color:#94a3b8;margin-bottom:20px;text-align:center;">લેપટોપની સ્ક્રીન પર બતાવેલ PIN નાખો</div>
+    <input id="pinInput" type="tel" inputmode="numeric" maxlength="8" placeholder="PIN"
+      style="width:180px;text-align:center;letter-spacing:8px;font-size:24px;padding:14px;border-radius:14px;border:1px solid #334155;background:#1e293b;color:#e2e8f0;outline:none;" />
+    <button id="pinBtn" style="margin-top:16px;width:180px;padding:14px;font-size:16px;font-weight:600;background:#0ea5e9;color:#fff;border:none;border-radius:14px;">જોડાઓ</button>
+    <div id="pinErr" style="color:#f87171;font-size:13px;margin-top:12px;height:18px;"></div>
+  </div>
+
+  <header>
+    <div class="title">📱 Phone <span>Mouse</span></div>
+    <div class="status"><span class="dot" id="dot"></span><span id="stxt">જોડાઈ રહ્યું...</span></div>
+  </header>
+
+  <div class="pad" id="pad">
+    <div class="hint" id="hint">
+      અહીં આંગળી ફેરવો → કર્સર ખસશે<br/>
+      ટેપ = ક્લિક · બે આંગળી = સ્ક્રોલ<br/>
+      ડબલ-ટેપ-હોલ્ડ = ડ્રેગ
+    </div>
+  </div>
+
+  <div class="sens">
+    ગતિ
+    <input type="range" id="sens" min="1" max="6" step="0.5" value="2.5" />
+    <span id="sensv">2.5×</span>
+  </div>
+
+  <div class="clicks">
+    <button class="left"  id="bL">ડાબી ક્લિક</button>
+    <button class="mid"   id="bM">મધ્ય</button>
+    <button class="right" id="bR">જમણી ક્લિક</button>
+  </div>
+
+  <div class="toolbar">
+    <button id="tScroll"><span class="ic">↕️</span>સ્ક્રોલ મોડ</button>
+    <button id="tKb"><span class="ic">⌨️</span>કીબોર્ડ</button>
+    <button id="tFull"><span class="ic">⛶</span>ફુલસ્ક્રીન</button>
+  </div>
+
+  <!-- કીબોર્ડ પેનલ -->
+  <div class="kb" id="kbPanel">
+    <div class="row1">
+      <input id="kbInput" type="text" placeholder="અહીં ટાઇપ કરો, લેપટોપ પર દેખાશે..." autocomplete="off" autocapitalize="off" autocorrect="off" />
+    </div>
+    <div class="keys">
+      <button data-k="backspace">⌫ બેકસ્પેસ</button>
+      <button data-k="enter">↵ Enter</button>
+      <button data-k="space">␣ સ્પેસ</button>
+      <button data-k="tab">⇥ Tab</button>
+      <button data-k="escape">Esc</button>
+      <button class="close" id="kbClose">▼ બંધ</button>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
