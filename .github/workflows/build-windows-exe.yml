@@ -1,0 +1,62 @@
+name: Build Windows EXE
+
+# આ workflow GitHub ના ક્લાઉડ Windows કમ્પ્યુટર પર .exe બનાવે છે.
+# તમારે લોકલ કંઈ કરવાનું નથી — ફક્ત કોડ GitHub પર push કરો.
+# પૂરું થાય પછી Releases / Artifacts માંથી PhoneMouse.zip ડાઉનલોડ કરો.
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:   # GitHub પર બટન દબાવીને જાતે પણ ચલાવી શકાય
+
+jobs:
+  build:
+    runs-on: windows-latest   # ← Windows ક્લાઉડ મશીન (નેટિવ .exe માટે જરૂરી)
+
+    steps:
+      - name: કોડ લો
+        uses: actions/checkout@v4
+
+      - name: Node.js સેટ કરો
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Dependencies ઇન્સ્ટોલ કરો (Windows native nut-js સહિત)
+        run: npm install
+
+      - name: pkg ઇન્સ્ટોલ કરો
+        run: npm install -g pkg@5.8.1
+
+      - name: .exe બનાવો
+        run: pkg . --targets node18-win-x64 --output dist/PhoneMouse.exe
+
+      - name: native binary (.node) .exe ની બાજુમાં મૂકો
+        shell: pwsh
+        run: |
+          # nut-js નું native libnut .node શોધીને dist માં કોપી કરો
+          $node = Get-ChildItem -Path node_modules -Recurse -Filter *.node | Where-Object { $_.FullName -match 'nut' } | Select-Object -First 1
+          if ($node) {
+            Copy-Item $node.FullName -Destination dist\
+            Write-Host "કોપી થયું: $($node.Name)"
+          } else {
+            Write-Host "ચેતવણી: .node ફાઇલ ન મળી (નવા nut-js માં અલગ હોઈ શકે)"
+          }
+          # README પણ સાથે મૂકો
+          Copy-Item README.md -Destination dist\ -ErrorAction SilentlyContinue
+
+      - name: ZIP બનાવો
+        shell: pwsh
+        run: Compress-Archive -Path dist\* -DestinationPath PhoneMouse-Windows.zip -Force
+
+      - name: ડાઉનલોડ માટે artifact મૂકો
+        uses: actions/upload-artifact@v4
+        with:
+          name: PhoneMouse-Windows
+          path: PhoneMouse-Windows.zip
+
+      - name: Release બનાવો (ટૅગ push હોય તો)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: PhoneMouse-Windows.zip
