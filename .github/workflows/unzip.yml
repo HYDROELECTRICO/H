@@ -1,0 +1,22 @@
+name: Unzip Project Project file
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  unzip-job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Unzip File
+        run: |
+          unzip "H.zip" -d .
+
+      - name: Commit and Push Changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Unzipped project files automatically"
